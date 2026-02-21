@@ -1,0 +1,58 @@
+
+name: Selenium UI Tests (TestNG)
+
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+    branches: [ "**" ]
+  workflow_dispatch: # manual trigger
+
+jobs:
+  ui-tests:
+    name: Run Selenium TestNG Suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17 (Temurin) with Maven cache
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      # Install latest stable Google Chrome on the runner
+      - name: Install Google Chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+
+      # Optional: print Chrome version (helps debugging)
+      - name: Chrome version
+        run: |
+          google-chrome --version || true
+          which google-chrome || true
+
+      # Run TestNG suite (using your testng.xml via Surefire config)
+      # Wrap with xvfb-run to provide a virtual display so non-headless Chrome can run
+      - name: Run TestNG suite with Xvfb
+        run: |
+          xvfb-run -a mvn -B -q test
+
+      # Always upload reports, even on failure
+      - name: Upload surefire reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: |
+            **/target/surefire-reports/**
+            **/target/testng-results.xml
+          if-no-files-found: warn
